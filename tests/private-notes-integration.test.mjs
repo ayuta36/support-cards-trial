@@ -14,8 +14,8 @@ const visitPerson = () => run(`view={teamId:${JSON.stringify(teamId)},screen:"pe
 const shareFor = async (audience) => {
   await get(`handle("share-team",{})`);
   await get(`handle("share-audience",{v:${JSON.stringify(audience)}})`);
-  env.promptAnswer = "share-pass";
   await get(`handle("share-proceed",{})`);
+  await env.submitSharePasscode("share-pass");
   const file = get("preparedShare.file");
   assert.ok(file, `share file for ${audience} should be prepared`);
   const text = await file.text();

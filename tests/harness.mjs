@@ -199,11 +199,17 @@ export function createApp(options = {}) {
   const legacyScardInput = { value:"", addEventListener:(name,fn)=>{handlers.legacyScard=fn;}, click(){env.legacyPickerCalls=(env.legacyPickerCalls||0)+1;} };
   const photoInput = { value:"", addEventListener:(name,fn)=>{handlers.photo=fn;}, click(){} };
   const body = { dataset:{}, classList:{add(){},remove(){}} };
+  let activeElement=null;
+  const passwordInputs = Object.fromEntries(["share-pass1","share-pass2","share-import-pass","share-pass-error","share-import-pass-error"].map(id=>[id,{
+    id,value:"",type:id.includes("error")?undefined:"password",textContent:"",attributes:{},
+    focus(){activeElement=this;},setAttribute(name,value){this.attributes[name]=String(value);},
+  }]));
   const document = {
     body,
     hidden:false,
+    get activeElement(){return activeElement;},
     addEventListener:(name,fn)=>{(handlers[name]??=[]).push(fn);},
-    getElementById:(id)=>({app,print,toast,importInput,legacyScardInput,photoInput}[id]||null),
+    getElementById:(id)=>({app,print,toast,importInput,legacyScardInput,photoInput,...passwordInputs}[id]||null),
     querySelectorAll:()=>[],
     createElement:(tag)=> tag==="a"?{click(){downloads.push(this);}}:{},
   };
@@ -249,10 +255,21 @@ export function createApp(options = {}) {
   }
   // 共有ファイルを読み込み、増えたチーム数を返す
   async function importShare(filePayload, answer){
-    env.promptAnswer=answer; run(`stage="ready"`);
+    run(`stage="ready"`);
     const before=get("teams.length"); importInput.files=[{text:get("encodeShareMarkdown")(filePayload)}];
-    handlers.import({target:importInput}); await readers.at(-1).completion;
+    handlers.import({target:importInput}); const completion=readers.at(-1).completion;
+    await Promise.resolve();
+    if(get("modal")==="share-pass-import"){
+      passwordInputs["share-import-pass"].value=answer||"";
+      await get('handle("import-pass-submit",{})');
+      if(!answer) return get("teams.length")-before;
+    }
+    await completion;
     return get("teams.length")-before;
+  }
+  async function submitSharePasscode(answer){
+    passwordInputs["share-pass1"].value=answer||"";passwordInputs["share-pass2"].value=answer||"";
+    return get('handle("share-pass-submit",{})');
   }
   // 画面の操作どおりにチームを書き出し、書き出したファイルの中身を返す(書き出せなかったときはnull)。
   // audience を渡すと、確認画面で書き出す相手を選んでから書き出す(省略すると初期値のまま)
@@ -260,8 +277,11 @@ export function createApp(options = {}) {
     run(`stage="ready"; ${listView(teamId)}`);
     await get(`handle("share-team",{})`);
     if(audience) await get(`handle("share-audience",{v:${JSON.stringify(audience)}})`);
-    env.promptAnswer=answer;
     const before=downloads.length; await get(`handle("share-proceed",{})`);
+    if(get("modal")==="share-pass-create"){
+      passwordInputs["share-pass1"].value=answer||"";passwordInputs["share-pass2"].value=answer||"";
+      await get('handle("share-pass-submit",{})');
+    }
     if(get("modal")==="share-ready") await get(`handle("share-download",{})`);
     return downloads.length>before ? get("parseShareMarkdown")(await imported.at(-1).text()) : null;
   }
@@ -269,7 +289,7 @@ export function createApp(options = {}) {
   return Object.assign(env, {
     context, run, get, store,
     app, print, toast, importInput, photoInput, body, document, localStorage, navigatorStub, speechStub,
-    handlers, windowHandlers, imported, readers, downloads, alerts, prompts, confirms, timers, revoked, spoken, voiceHandlers,
-    startSession, makeShare, importShare, exportShare,
+    handlers, windowHandlers, imported, readers, downloads, alerts, prompts, confirms, timers, revoked, spoken, voiceHandlers,passwordInputs,
+    startSession, makeShare, importShare, exportShare, submitSharePasscode,
   });
 }

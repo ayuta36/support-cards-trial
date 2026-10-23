@@ -13,7 +13,7 @@
         配色は白を基調にした4つのテーマ(milk・sakura・sora・wakaba)。OS のダーク設定では変えない。実際に効く色(後ろのルールが前のルールを上書きした結果)で、
         文字は4.5:1以上、入力欄・枠だけのボタンの枠は3:1以上(静的に計算する)。主な操作の白い文字・緊急の赤い文字・入力欄の枠・ピンクの文字を、4つのテーマすべてで確かめる。
         タイル名は line-break:strict。タップ領域は高さ44px以上(.tile-tool は幅も44px)。文字サイズ(大きめ・特大)が各部品に効く。
-        APP_VERSION は "1.1.0-trial"。
+        APP_VERSION は "1.1.1-trial"。
    ※一部のテストは、前のテストの状態を引き継いで進む。テストは登録した順に実行される。このファイルだけの新しいアプリ(createApp)で動く。
    ============================================================ */
 import assert from "node:assert/strict";
@@ -179,8 +179,8 @@ test("表示される文言:ホームの案内・チーム名とトピック名�
   assert.ok(readIndexHtml().includes("本人に関する情報を、必要な人へ伝えるプロフィールカード"));
 });
 
-test("APP_VERSION は 1.1.0-trial(設定のこのアプリについてに出る。共有ファイルの meta にも入る)", async () => {
-  assert.strictEqual(get("APP_VERSION"), "1.1.0-trial");
+test("APP_VERSION は 1.1.1-trial(設定のこのアプリについてに出る。共有ファイルの meta にも入る)", async () => {
+  assert.strictEqual(get("APP_VERSION"), "1.1.1-trial");
 });
 
 section("新しくインストールしたときのサンプル(20代の架空の人物「はなさん」)");

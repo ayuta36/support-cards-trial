@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { createApp, test, section, plain, listView } from "./harness.mjs";
 
 const env = createApp();
-const { run, get, context, localStorage, downloads, alerts, startSession, makeShare, importShare, exportShare } = env;
+const { run, get, context, localStorage, downloads, alerts, passwordInputs, startSession, makeShare, importShare, exportShare } = env;
 
 // S9 では deriveKey を差し替えて呼び出し回数を数える。元の関数を先に控えておく
 const realDerive = get("deriveKey");
@@ -114,7 +114,7 @@ test("S9:4文字以上の判定は統一後の値で行う(半角カナ6文字�
   run(`deriveKey=globalThis.__realDerive`);
   const downloadsBeforeShort=downloads.length;
   const shortExport=await exportShare("team_s9","ﾊﾞﾊﾞﾊﾞ");
-  assert.ok(shortExport===null&&downloads.length===downloadsBeforeShort&&alerts.at(-1)==="4文字以上にしてください");
+  assert.ok(shortExport===null&&downloads.length===downloadsBeforeShort&&get("modal")==="share-pass-create"&&passwordInputs["share-pass1"].value==="ﾊﾞﾊﾞﾊﾞ");
 });
 
 test("S9:統一後に4文字になるパスコード(ﾊﾞﾊﾞﾊﾞﾊﾞ)は書き出せ、統一した値(ババババ)で読み込める", async () => {

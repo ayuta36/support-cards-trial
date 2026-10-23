@@ -20,6 +20,27 @@
    ============================================================ */
 "use strict";
 
+let shareApproval=null;
+let pendingImportPassResolve=null;
+let importOpenerLocation=null;
+function setPasscodeError(id,message){
+  const err=document.getElementById(id);
+  if(err) err.textContent=message;
+}
+function requestImportPasscode(){
+  return new Promise(resolve=>{
+    if(pendingImportPassResolve){pendingImportPassResolve(null);}
+    pendingImportPassResolve=resolve;
+    if(modal===null&&importOpenerLocation){modalFocusOrigins.push(importOpenerLocation);importOpenerLocation=null;}
+    modal="share-pass-import"; render();
+  });
+}
+function finishImportPasscode(value){
+  const resolve=pendingImportPassResolve;pendingImportPassResolve=null;
+  modal=null;render();
+  if(resolve) resolve(value);
+}
+
 // ---- 読み上げ ----
 // 読み上げる内容が外部へ送られないよう、端末内(localService)の日本語音声だけを使う。
 // getVoices() は起動直後は空のことがあるため、起動時と voiceschanged で取得して保持し、読み上げる時にも取り直す
@@ -56,10 +77,58 @@ function keepDraftInputs(){
   const boxes = Array.from(document.querySelectorAll("[data-draft-aud]"));   // 公開先のチェック(編集中の画面にあるときだけ)
   if(boxes.length && draftAudience) draftAudience = AUDIENCES.map(a=>a.id).filter(id=>boxes.some(el=>el.dataset.draftAud===id && el.checked));
 }
-function restoreShareTriggerFocus(){
-  const trigger=app.querySelector('[data-act="share-team"]');
-  if(trigger) trigger.focus();
-  shareReturnFocus=null;
+let modalFocusOrigins=[];
+let lastAccessibleModal=null;
+function focusLocation(el){
+  if(!el) return null;
+  const d=el.dataset||{};
+  return {id:el.id||"",act:d.act||"",v:d.v||"",idValue:d.id||""};
+}
+function focusElementAt(location){
+  if(stage!=="ready"&&stage!=="home") return false;
+  if(!location) return false;
+  if(location.id){const byId=document.getElementById(location.id);if(byId&&byId.focus&&byId.isConnected!==false&&(!app.contains||app.contains(byId))){byId.focus();return true;}}
+  if(!location.act||!app.querySelectorAll) return false;
+  const found=[...app.querySelectorAll("[data-act]")].find(el=>{
+    const d=el.dataset||{};
+    return d.act===location.act&&(!location.v||d.v===location.v)&&(!location.idValue||d.id===location.idValue);
+  });
+  if(found&&found.focus&&found.isConnected!==false){found.focus();return true;}
+  return false;
+}
+function restoreModalOrigin(){
+  const active=document.activeElement;
+  if(active&&active!==document.body&&active!==document.documentElement&&active.isConnected!==false&&(!app.contains||app.contains(active))) return;
+  while(modalFocusOrigins.length){if(focusElementAt(modalFocusOrigins.pop())) return;}
+}
+function bindAccessibleModal(){
+  const dialog=app.querySelector?.(".modal");
+  const background=app.querySelector?.(".screen");
+  if(background){background.inert=!!dialog;if(dialog)background.setAttribute("aria-hidden","true");else background.removeAttribute("aria-hidden");}
+  if(!dialog){lastAccessibleModal=null;return;}
+  const heading=dialog.querySelector?.("h2");
+  if(heading){if(!heading.id) heading.id="dialog-title";heading.setAttribute("tabindex","-1");dialog.setAttribute("aria-labelledby",heading.id);}
+  dialog.setAttribute("role","dialog");dialog.setAttribute("aria-modal","true");
+  if(modal!==lastAccessibleModal){
+    const autofocus=dialog.querySelector?.("[data-autofocus]");
+    (autofocus||heading||dialog).focus?.();
+  }
+  lastAccessibleModal=modal;
+  dialog.addEventListener("keydown",e=>{
+    if(e.key!=="Tab") return;
+    const controls=[...dialog.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')].filter(el=>!el.hidden&&el.getAttribute("aria-hidden")!=="true"&&el.type!=="hidden"&&(!el.getClientRects||el.getClientRects().length>0));
+    if(!controls.length){e.preventDefault();dialog.focus?.();return;}
+    const first=controls[0],last=controls[controls.length-1];
+    if(e.shiftKey&&(document.activeElement===first||document.activeElement===heading)){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  });
+}
+function clearSensitiveDialogs(){
+  shareApproval=null;
+  importOpenerLocation=null;
+  const resolve=pendingImportPassResolve;pendingImportPassResolve=null;
+  if(resolve) resolve(null);
+  modalFocusOrigins=[];lastAccessibleModal=null;
 }
 
 let disposeTopicDrag=null;
@@ -86,9 +155,20 @@ function bindEvents(){
   bindOrganizeDrag();
   app.querySelectorAll("[data-stop]").forEach(el=>el.addEventListener("click",e=>e.stopPropagation()));
   app.querySelectorAll("[data-act]").forEach(el=>{
-    el.addEventListener("click",(e)=>{ e.stopPropagation(); handle(el.dataset.act, el.dataset); });
+    el.addEventListener("click",(e)=>{
+      e.stopPropagation();
+      const before=modal,location=focusLocation(el);
+      if(el.dataset.act==="import") importOpenerLocation=location;
+      const result=handle(el.dataset.act,el.dataset);
+      const finish=()=>{
+        if(before===null&&modal!==null) modalFocusOrigins.push(location);
+        else if(before!==null&&modal!==null&&before!==modal) modalFocusOrigins.push(location);
+        else if(before!==null&&modal===null) restoreModalOrigin();
+      };
+      if(result&&typeof result.then==="function") result.then(finish,finish); else finish();
+    });
     if(el.getAttribute("role")==="button"){
-      el.addEventListener("keydown",(e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); e.stopPropagation(); handle(el.dataset.act, el.dataset); } });
+      el.addEventListener("keydown",(e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); e.stopPropagation(); el.click(); } });
     }
   });
   const privateNoteInput=document.getElementById("private-note-input");
@@ -99,35 +179,10 @@ function bindEvents(){
   });
   const lk=document.getElementById("lk-pass"); if(lk) lk.addEventListener("keydown",e=>{ if(e.key==="Enter") handle("unlock",{}); });
   const su=document.getElementById("su-pass2"); if(su) su.addEventListener("keydown",e=>{ if(e.key==="Enter") handle("setup-go",{}); });
-  if(modal==="share-preflight"){
-    const dialog=document.getElementById("share-preflight-dialog");
-    const heading=document.getElementById("share-preflight-title");
-    if(heading) heading.focus();
-    if(dialog) dialog.addEventListener("keydown",e=>{
-      if(e.key!=="Tab") return;
-      const controls=[...dialog.querySelectorAll("button:not([disabled]), input:not([disabled])")];   // 書き出す相手のラジオボタンも含める
-      if(!controls.length) return;
-      const first=controls[0], last=controls[controls.length-1];
-      if(e.shiftKey && (document.activeElement===first || document.activeElement===heading)){e.preventDefault();last.focus();}
-      else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}
-    });
+  for(const [id,action] of [["share-pass2","share-pass-submit"],["share-import-pass","import-pass-submit"]]){
+    const input=document.getElementById(id);if(input?.addEventListener)input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();app.querySelector?.(`[data-act="${action}"]`)?.click();}});
   }
-  if(modal==="share-ready"){
-    const title=document.getElementById("share-ready-title"); if(title) title.focus();
-  }
-  if(modal==="resume-picker"){
-    const dialog=document.getElementById("resume-picker-dialog");
-    const heading=document.getElementById("resume-picker-title");
-    if(heading) heading.focus();
-    if(dialog) dialog.addEventListener("keydown",e=>{
-      if(e.key!=="Tab") return;
-      const controls=[...dialog.querySelectorAll("button:not([disabled])")];
-      if(!controls.length) return;
-      const first=controls[0],last=controls[controls.length-1];
-      if(e.shiftKey&&(document.activeElement===first||document.activeElement===heading)){e.preventDefault();last.focus();}
-      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
-    });
-  }
+  bindAccessibleModal();
 }
 window.addEventListener("beforeunload",(e)=>{
   const p=getPerson(), tm=getTeam();
@@ -135,13 +190,13 @@ window.addEventListener("beforeunload",(e)=>{
     e.preventDefault(); e.returnValue="";
   }
 });
-document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && modal){ const restore=modal==="share-preflight"&&shareReturnFocus; if(modal==="resume-picker")clearPendingPicker(); modal=null; modalDraft=null; render(); if(restore) restoreShareTriggerFocus(); } });
+document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && modal){e.preventDefault();const before=modal,result=handle("close-modal",{});const finish=()=>{if(before!==modal&&modal!==null)restoreModalOrigin();else if(!modal)restoreModalOrigin();};if(result&&typeof result.then==="function")result.then(finish,finish);else finish();} });
 
 // ---- 戻る操作(端末やブラウザの「戻る」) ----
 // 画面を一段浅くする: モーダル → 詳細 → 人物(緊急情報の一覧) → 一覧 → ホーム。ホームの全チームの緊急情報の一覧 → ホーム。ホームでは何もしない(ページを離れる)。
 // 閉じ方・戻り方は、アプリ内のボタンと同じ処理(handle)を使う(書きこみ中の下書きを捨てる扱いも、「もどる」ボタンと同じ)
 async function navBack(){
-  if(modal) return handle("close-modal",{});
+  if(modal){const before=modal,result=await handle("close-modal",{});if(before!==modal&&!modal)restoreModalOrigin();return result;}
   const screen=currentScreen();
   if(screen==="emergency-all") return handle("back-home",{});   // ホームから開く全チームの緊急情報の一覧(stage は home のまま)。ホームへ戻る
   if(stage==="home") return;
@@ -243,8 +298,8 @@ async function handle(act, ds){
       const received=isReceivedTeam(tm);
       if(!received && teams.length<2) return;   // 自分で作ったチームは、最後の1つを削除できない(従来どおり)。受け取ったチームは、1つだけでも削除できる
       const msg = received
-        ? `「${tm.name}」を削除しますか?\nこの端末から削除します。送った人の端末やファイルからは消えません。元に戻せません。`
-        : `「${tm.name}」をこの端末から削除しますか?\nこの端末に保存されたチームとカードが消えます。共有済みの相手のコピーは削除されません。`;
+        ? `「${tm.name}」を削除しますか?\nこの端末から削除します。送った人の端末やファイルからは消えません。チーム・カードと端末内メモも削除されます。元に戻せません。`
+        : `「${tm.name}」をこの端末から削除しますか?\nこの端末に保存されたチームとカードが消えます。端末内メモも削除されます。共有済みの相手のコピーは削除されません。元に戻せません。`;
       if(!confirm(msg)) return;
       teams=teams.filter(t=>t.id!==tm.id); privateNotes=deletePrivateNotesForTeam(privateNotes,tm.id); if(!await save()){render();return;} modal=null; view.teamId=null; stage="home"; render(); break;
     }
@@ -265,6 +320,14 @@ async function handle(act, ds){
       if(!confirm("以前の版で暗号化せずに保存されたデータを削除します。現在のデータ（暗号化済み）は消えません。元に戻せません。削除しますか？")) return;
       try{ localStorage.removeItem(LEGACY_KEY); }catch(e){}
       render(); break;
+    }
+    case "toggle-share-pass":{
+      const input=document.getElementById(ds.for);
+      if(!input) return;
+      input.type=input.type==="password"?"text":"password";
+      const button=[...app.querySelectorAll('[data-act="toggle-share-pass"]')].find(el=>el.dataset?.for===ds.for);
+      if(button){const shown=input.type==="text";button.textContent=shown?"隠す":"表示";button.setAttribute("aria-pressed",String(shown));button.setAttribute("aria-label",`${ds.for==="share-pass2"?"確認用":"共有"}パスコードを${shown?"隠す":"表示"}`);}
+      break;
     }
     case "open-about": modal="about"; render(); break;
     case "set-fs": prefs.fs=ds.v; applyPrefs(); render(); break;
@@ -335,7 +398,7 @@ async function handle(act, ds){
       if(!await save()){render();return;} modal=null; render(); break;
     }
     case "del-person":{
-      keepModalInputs(); if(!confirm(`${modalDraft.name} のカードを削除しますか?`)) return;
+      keepModalInputs(); if(!confirm(`${modalDraft.name} のカードを削除しますか?\nこのカードに保存した端末内メモも削除されます。元に戻せません。`)) return;
       tm.people=tm.people.filter(x=>x.id!==modalDraft.id); privateNotes=deletePrivateNoteForPerson(privateNotes,tm.id,modalDraft.id); if(!await save()){render();return;} modal=null; view={...view,screen:"list",personId:null}; render(); break;
     }
     case "save-private-note":{
@@ -350,7 +413,15 @@ async function handle(act, ds){
       clearPrivateNoteDraft(tm.id,p.id);
       render(); break;
     }
-    case "close-modal":{ const restore=modal==="share-preflight"&&shareReturnFocus; if(modal==="resume-picker")clearPendingPicker(); if(modal==="share-ready")clearPreparedShare(); modal=null; modalDraft=null; render(); if(restore) restoreShareTriggerFocus(); break; }
+    case "close-modal":{
+      if(modal==="share-pass-create"){shareApproval=null;modal="share-preflight";render();break;}
+      if(modal==="share-pass-import"){
+        const resolve=pendingImportPassResolve;pendingImportPassResolve=null;modal=null;render();if(resolve)resolve(null);break;
+      }
+      if(modal==="resume-picker")clearPendingPicker();
+      if(modal==="share-ready")clearPreparedShare();
+      modal=null;modalDraft=null;render();break;
+    }
     case "close-share-ready": clearPreparedShare(); modal=null; render(); break;
     case "discard-picker": if(modal!=="resume-picker") return; clearPendingPicker(); modal=null; screenError="選んだファイルを破棄しました。"; render(); break;
     case "resume-picker":{
@@ -390,7 +461,7 @@ async function handle(act, ds){
     }
 
     // ---- 共有(暗号化ファイルの書き出し/読み込み) ----
-    case "share-team": shareAttempt++; shareReturnFocus=true; shareAudience=defaultShareAudience(tm); modal="share-preflight"; render(); break;
+    case "share-team": shareAttempt++; shareAudience=defaultShareAudience(tm); modal="share-preflight"; render(); break;
     case "share-audience":{   // 共有前の確認画面で、書き出す相手を選ぶ。受け取ったチームは、受け取った範囲より広い相手を選べない
       if(modal!=="share-preflight" || !tm || !allowedShareAudiences(tm).includes(ds.v)) return;
       shareAudience=ds.v; render();
@@ -401,34 +472,48 @@ async function handle(act, ds){
       if(modal!=="share-preflight" || !tm) return;
       const audience=shareAudience;
       if(!allowedShareAudiences(tm).includes(audience)) return;
-      const attempt=shareAttempt, teamId=tm.id, approvalEpoch=sessionEpoch, approvalKey=cryptoKey;
       // 承認した内容のスナップショット:選んだ相手に渡るトピックだけを複製する(source は取り込んだ端末だけの情報なので、ファイルには入れない)
       const approvedTeam=filterTeamForAudience(tm, audience); delete approvedTeam.source;
       const meta={audience, createdAt:new Date().toISOString(), appVersion:APP_VERSION};
-      modal=null; render();
-      shareReturnFocus=null;
-      // 全角・半角などの違いで相手が開けなくならないよう、NFKCで統一した値を鍵にする(4文字以上の判定も統一後の値)
-      const pass = (prompt("共有用のパスコードを決めてください(相手に別途伝えます)")||"").normalize("NFKC");
-      if(!pass) return;
-      if(pass.length<4){ alert("4文字以上にしてください"); return; }
-      const s = crypto.getRandomValues(new Uint8Array(16));
-      const k = await deriveKey(pass, s);
-      if(attempt!==shareAttempt || sessionEpoch!==approvalEpoch || stage!=="ready" || view.teamId!==teamId || cryptoKey!==approvalKey) return;
-      const enc = await encryptJson({team:approvedTeam, meta}, k);   // meta は暗号化された中身にだけ入れる(外側のJSONには平文で出さない)
-      if(attempt!==shareAttempt || sessionEpoch!==approvalEpoch || stage!=="ready" || view.teamId!==teamId || !teams.some(t=>t.id===teamId)) return;
-      const out = { app:"support-card", type:"team-share", v:1, salt:b64(s), iv:enc.iv, data:enc.data };
+      shareApproval={approvedTeam,meta,attempt:shareAttempt,teamId:tm.id,epoch:sessionEpoch,key:cryptoKey};
+      modal="share-pass-create"; render(); break;
+    }
+    case "share-pass-submit":{
+      if(modal!=="share-pass-create"||!shareApproval) return;
+      const first=document.getElementById("share-pass1"),second=document.getElementById("share-pass2");
+      const pass=(first?.value||"").normalize("NFKC"),confirmPass=(second?.value||"").normalize("NFKC");
+      if(pass.length<4){setPasscodeError("share-pass-error","4文字以上にしてください");first?.focus();return;}
+      if(pass!==confirmPass){setPasscodeError("share-pass-error","2回の入力が一致しません");second?.focus();return;}
+      if(first) first.value=""; if(second) second.value="";
+      const approval=shareApproval;
+      if(approval.attempt!==shareAttempt||sessionEpoch!==approval.epoch||stage!=="ready"||view.teamId!==approval.teamId||cryptoKey!==approval.key){shareApproval=null;modal=null;render();return;}
+      const s=crypto.getRandomValues(new Uint8Array(16));
+      const k=await deriveKey(pass,s);
+      if(shareApproval!==approval||approval.attempt!==shareAttempt||sessionEpoch!==approval.epoch||stage!=="ready"||view.teamId!==approval.teamId||cryptoKey!==approval.key) return;
+      const enc=await encryptJson({team:approval.approvedTeam,meta:approval.meta},k);
+      if(shareApproval!==approval||approval.attempt!==shareAttempt||sessionEpoch!==approval.epoch||stage!=="ready"||view.teamId!==approval.teamId||cryptoKey!==approval.key||!teams.some(t=>t.id===approval.teamId)) return;
+      const out={app:"support-card",type:"team-share",v:1,salt:b64(s),iv:enc.iv,data:enc.data};
       const fileName=shareFileName();
       let markdown;
-      try{ markdown=encodeShareMarkdown(out); }
+      try{markdown=encodeShareMarkdown(out);}
       catch(err){
+        shareApproval=null; modal="share-preflight"; render();
         if(err?.code!=="SHARE_FILE_TOO_LARGE") throw err;
         alert("この共有ファイルは20MiBを超えるため作成できません。共有する相手の範囲を狭めるか、写真やカードを減らしてください。");
         return;
       }
       const file=typeof File==="function"?new File([markdown],fileName,{type:"text/markdown;charset=utf-8"}):Object.assign(new Blob([markdown],{type:"text/markdown;charset=utf-8"}),{name:fileName});
-      if(attempt!==shareAttempt || sessionEpoch!==approvalEpoch || stage!=="ready" || view.teamId!==teamId || cryptoKey!==approvalKey){ return; }
-      preparedShare={file,fileName,epoch:approvalEpoch,key:approvalKey,teamId};
+      if(shareApproval!==approval||approval.attempt!==shareAttempt||sessionEpoch!==approval.epoch||stage!=="ready"||view.teamId!==approval.teamId||cryptoKey!==approval.key) return;
+      shareApproval=null;
+      preparedShare={file,fileName,epoch:approval.epoch,key:approval.key,teamId:approval.teamId};
       modal="share-ready"; render(); break;
+    }
+    case "import-pass-submit":{
+      if(modal!=="share-pass-import"||!pendingImportPassResolve) return;
+      const input=document.getElementById("share-import-pass"),pass=input?.value||"";
+      if(!pass){setPasscodeError("share-import-pass-error","パスコードを入力してください");input?.focus();return;}
+      if(input) input.value="";
+      finishImportPasscode(pass); break;
     }
     case "share-native":{
       const ready=preparedShare;
@@ -512,7 +597,7 @@ async function processImportFile(f,importEpoch=sessionEpoch,importKey=cryptoKey)
       }
       if(data.type==="team-share" && data.salt){
         if(data.v!==1 && data.v!==undefined){ alert("新しいバージョンのアプリで作られたファイルのため、読み込めません。"); resolve(false);return; }
-        const pass=prompt("共有ファイルのパスコードを入力してください");
+        const pass=await requestImportPasscode();
         if(!pass){resolve(false);return;}
         let obj;
         try{ obj=await decryptShared(data, pass); }

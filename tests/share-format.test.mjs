@@ -202,10 +202,15 @@ const mangle = (text) => "\uFEFF" + text
   .replace(/\n/g, " \t\r\n") + "\r\n\r\n";
 // 共有ファイルの中身(text)を「選んだ」ことにして、読み込みの終わりまで進める。増えたチーム数を返す
 async function importText(text, answer) {
-  env.promptAnswer = answer; run(`stage="ready"`);
+  run(`stage="ready"`);
   const before = get("teams.length");
   importInput.files = [{ text }];
   handlers.import({ target:importInput });
+  await Promise.resolve();
+  if(get("modal")==="share-pass-import"){
+    env.passwordInputs["share-import-pass"].value=answer||"";
+    await get(`handle("import-pass-submit",{})`);
+  }
   await readers.at(-1).completion;
   return get("teams.length") - before;
 }
@@ -294,7 +299,7 @@ test("旧 .scard は、設定の変換で .md にしてから読み込めば、�
   get("clearPreparedShare()"); run(`modal=null`);
   const promptsBefore = prompts.length;
   assert.strictEqual(await importText(converted, PASS), 1);   // 元の共有パスコードで、新しいチームとして追加される
-  assert.strictEqual(prompts.length, promptsBefore + 1);
+  assert.strictEqual(prompts.length, promptsBefore);
   assert.strictEqual(await importText(get("encodeShareMarkdown")(payload), PASS), 1);   // 比べるために、最初から .md だったものも読み込む
   const received = (index) => { const t = plain(get(`teams.at(${index})`)); delete t.id; delete t.source.importedAt; return t; };   // 取り込むたびに変わる値(ID・受け取った日時)を除く
   assert.deepStrictEqual(received(-2), received(-1));
@@ -325,8 +330,11 @@ test("共有ファイルは、読み込む前に大きさを確かめる:20MBを
   handlers.import({ target:importInput });
   assert.ok(readers.length === readersBefore && prompts.length === promptsBefore && get("teams.length") === teamsBefore);
   assert.ok(alerts.length === alertsBefore + 2 && alerts.at(-1) === message);
-  env.promptAnswer = PASS;   // ちょうど20MBは読み込む
-  assert.strictEqual(await get("processImportFile")({ name:"edge.md", size:LIMIT, text }), true);
+  const edgeImport=get("processImportFile")({ name:"edge.md", size:LIMIT, text });
+  await Promise.resolve();
+  env.passwordInputs["share-import-pass"].value=PASS;
+  await get(`handle("import-pass-submit",{})`);
+  assert.strictEqual(await edgeImport, true);
   assert.ok(readers.length === readersBefore + 1 && get("teams.length") === teamsBefore + 1);
 });
 
@@ -351,7 +359,7 @@ test("通常の共有書き出しと旧形式変換はサイズ超過を案内�
     const alertsBefore = alerts.length;
     const result = await env.exportShare(tm.id, "team-pass");
     assert.strictEqual(result, null);
-    assert.strictEqual(get("modal"), null);
+    assert.strictEqual(get("modal"), "share-preflight");
     assert.strictEqual(get("preparedShare"), null);
     assert.strictEqual(alerts.length, alertsBefore + 1);
     assert.match(alerts.at(-1), /20MiBを超えるため作成できません/);

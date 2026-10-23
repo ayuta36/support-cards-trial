@@ -7,8 +7,8 @@ const { get, handlers, downloads, alerts, navigatorStub } = env;
 async function prepare() {
   await env.startSession("device-pass", [makeTestTeam()], "team_test");
   await get(`handle("share-team",{})`);
-  env.promptAnswer = "share-pass";
   await get(`handle("share-proceed",{})`);
+  await env.submitSharePasscode("share-pass");
   assert.equal(get("modal"), "share-ready");
 }
 

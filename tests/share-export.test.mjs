@@ -26,10 +26,20 @@ test("読み込んだIDや写真属性がHTML属性を壊さない", async () =>
   assert.ok(!app.innerHTML.includes('data-id="person_test"><button')&&!app.innerHTML.includes('onerror="alert(1)"'));
 });
 
-test("事前確認に全員、紹介文、写真、トピック件数、空項目、一覧にない項目が表示される", async () => {
+test("事前確認に全員、紹介文、写真、トピック本文、空項目、一覧にない項目が表示される", async () => {
   await get(`handle("share-team",{})`);
   await get(`handle("share-audience",{v:"all"})`);   // 書き出す相手の初期値は学生向け。従来の「全部を書き出す」内容は「すべて」を選んだときの表示
-  assert.ok(app.innerHTML.includes("はなちゃん")&&app.innerHTML.includes("そらくん")&&app.innerHTML.includes("紹介文")&&app.innerHTML.includes("写真")&&app.innerHTML.includes("基本情報")&&app.innerHTML.includes("独自&lt;項目&gt;")&&app.innerHTML.includes("睡眠")&&app.innerHTML.includes("一覧にない保存済みトピック")&&app.innerHTML.includes("全情報"));
+  assert.ok(app.innerHTML.includes("はなちゃん")&&app.innerHTML.includes("そらくん")&&app.innerHTML.includes("紹介文")&&app.innerHTML.includes("写真")&&app.innerHTML.includes("基本情報")&&app.innerHTML.includes("独自&lt;項目&gt;")&&app.innerHTML.includes("保護者のみ")&&app.innerHTML.includes("保持")&&app.innerHTML.includes("睡眠")&&app.innerHTML.includes("一覧にない保存済みトピック")&&app.innerHTML.includes("全情報"));
+});
+
+test("事前確認に表示するトピック本文はHTMLとして実行されない", async () => {
+  run(`teams[0].people[0].topics.communication=[{label:"",value:'<img src=x onerror="alert(1)">'}]`);
+  await get(`handle("share-team",{})`);
+  await get(`handle("share-audience",{v:"all"})`);
+  assert.ok(app.innerHTML.includes("&lt;img src=x")&&!app.innerHTML.includes('<img src=x onerror="alert(1)">'));
+  await get(`handle("close-modal",{})`);
+  context.__originalCommunication=team.people[0].topics.communication;
+  run(`teams[0].people[0].topics.communication=structuredClone(globalThis.__originalCommunication);globalThis.__originalCommunication=null`);
 });
 
 test("キャンセルするとパスコード入力もファイル作成も始まらない", async () => {
@@ -40,11 +50,21 @@ test("キャンセルするとパスコード入力もファイル作成も始�
 test("確認後に暗号化Markdownを準備し、保存操作で現在の team-share v1 形式を出す", async () => {
   await get(`handle("share-team",{})`);
   await get(`handle("share-audience",{v:"all"})`);   // 従来の「チーム全体を書き出す」動作は、相手に「すべて」を選んだとき
-  env.promptAnswer="team-pass";
   const timersBeforeExport=timers.length;
   revokedBeforeExport=revoked.length;
   alertsBeforeExport=alerts.length;
   await get(`handle("share-proceed",{})`);
+  assert.strictEqual(get("modal"),"share-pass-create");
+  assert.ok(app.innerHTML.includes('id="share-pass1" type="password"')&&app.innerHTML.includes('label class="m-label" for="share-pass1"')&&app.innerHTML.includes('data-act="toggle-share-pass"'));
+  env.passwordInputs["share-pass1"].value="team-pass";
+  env.passwordInputs["share-pass2"].value="different";
+  await get(`handle("share-pass-submit",{})`);
+  assert.strictEqual(get("modal"),"share-pass-create");
+  assert.strictEqual(env.passwordInputs["share-pass1"].value,"team-pass");
+  assert.strictEqual(env.passwordInputs["share-pass2"].value,"different");
+  assert.strictEqual(env.passwordInputs["share-pass-error"].textContent,"2回の入力が一致しません");
+  env.passwordInputs["share-pass2"].value="team-pass";
+  await get(`handle("share-pass-submit",{})`);
   assert.strictEqual(get("modal"),"share-ready");
   assert.strictEqual(downloads.length,0);   // 暗号化後にもう一度、保存または端末共有を選ぶ
   await get(`handle("share-download",{})`);
@@ -62,6 +82,15 @@ test("実際のアプリ暗号関数で復号するとチーム全体が一致",
   correctKey=await get("deriveKey")("team-pass",get("unb64")(payload.salt));
   const decrypted=await get("decryptJson")(payload,correctKey);
   assert.ok(JSON.stringify(decrypted.team)===JSON.stringify(team));
+});
+
+test("空の共有パスコードでは読み込み画面に留まり、キャンセルで閉じられる", async () => {
+  const count=await env.importShare(payload,"");
+  assert.strictEqual(count,0);
+  assert.strictEqual(get("modal"),"share-pass-import");
+  assert.strictEqual(env.passwordInputs["share-import-pass-error"].textContent,"パスコードを入力してください");
+  await get(`handle("close-modal",{})`);
+  assert.strictEqual(get("modal"),null);
 });
 
 test("誤ったパスコードを拒否", async () => {
@@ -102,9 +131,46 @@ test("S14:ダウンロード直後はURLを解放せず、30秒後に解放す�
 
 section("実際のアプリ関数:共有中のロックと読み込み");
 
+test("共有パスコード入力中のキャンセルとロックは承認内容を破棄し、ファイルを作らない", async () => {
+  const before=downloads.length;
+  await get(`handle("share-team",{})`);
+  await get(`handle("share-proceed",{})`);
+  assert.strictEqual(get("modal"),"share-pass-create");
+  await get(`handle("close-modal",{})`);
+  assert.strictEqual(get("shareApproval"),null);
+  await env.submitSharePasscode("stale-pass");
+  assert.strictEqual(get("modal"),"share-preflight");
+  assert.strictEqual(downloads.length,before);
+
+  await get(`handle("close-modal",{})`);
+  await get(`handle("share-team",{})`);
+  await get(`handle("share-proceed",{})`);
+  await get("lockNow()");
+  assert.strictEqual(get("shareApproval"),null);
+  await env.submitSharePasscode("stale-pass");
+  assert.strictEqual(get("stage"),"locked");
+  assert.strictEqual(get("modal"),null);
+  assert.strictEqual(downloads.length,before);
+});
+
+test("共有パスコード入力中にロックすると読み込み待ちが解決し、チームも画面も復帰しない", async () => {
+  context.__testKey=correctKey;
+  run(`teams=[]; stage="ready"; cryptoKey=globalThis.__testKey; modal=null;`);
+  const before=get("teams.length");
+  importInput.files=[{text:get("encodeShareMarkdown")(payload)}];
+  handlers.import({target:importInput});
+  await Promise.resolve();
+  assert.strictEqual(get("modal"),"share-pass-import");
+  await get("lockNow()");
+  await readers.at(-1).completion;
+  assert.strictEqual(get("teams.length"),before);
+  assert.strictEqual(get("stage"),"locked");
+  assert.strictEqual(get("modal"),null);
+  await startSession("test-device",[team],"team_test");
+});
+
 test("共有暗号化の待機中にロックするとダウンロードを中止", async () => {
   await get(`handle("share-team",{})`);
-  env.promptAnswer="second-pass";
   const realDerive=get("deriveKey");
   let releaseDerive;
   let startedDerive;
@@ -113,10 +179,12 @@ test("共有暗号化の待機中にロックするとダウンロードを中�
   context.__startedDerive=startedDerive; context.__releaseDerive=null; context.__realDerive=realDerive;
   const beforeLockedShare=downloads.length;
   const pending=get(`handle("share-proceed",{})`);
+  const submitting=env.submitSharePasscode("second-pass");
   await started;
   await get("lockNow()");
   releaseDerive=context.__releaseDerive;
   releaseDerive();
+  await submitting;
   await pending;
   run(`deriveKey=globalThis.__realDerive`);
   assert.ok(downloads.length===beforeLockedShare);
@@ -127,15 +195,16 @@ test("確認後にデータが編集されても承認済みスナップショ�
   run(`view={teamId:"team_test",screen:"list",personId:null,topicId:null,editing:false,organize:false};`);
   await get(`handle("share-team",{})`);
   await get(`handle("share-audience",{v:"all"})`);   // 基本情報(運営向け)も含めて確かめるため、「すべて」を選ぶ
-  env.promptAnswer="snapshot-pass";
   let snapshotStarted;
   const snapshotWaiting=new Promise(resolve=>{snapshotStarted=resolve;});
   context.__startedSnapshot=snapshotStarted;
   run(`deriveKey=async (...args)=>{ globalThis.__startedSnapshot(); await new Promise(resolve=>globalThis.__releaseSnapshot=resolve); return globalThis.__realDerive(...args); }`);
   const snapshotExport=get(`handle("share-proceed",{})`);
+  const submittingSnapshot=env.submitSharePasscode("snapshot-pass");
   await snapshotWaiting;
   run(`teams[0].name="変更後のチーム名"; teams[0].people[0].topics.basic[0].value="変更後の内容"`);
   context.__releaseSnapshot();
+  await submittingSnapshot;
   await snapshotExport;
   run(`deriveKey=globalThis.__realDerive`);
   await get(`handle("share-download",{})`);
@@ -150,9 +219,11 @@ test("共有ファイル読み込みで新しいチームとして追加でき�
   context.__testSalt=get("unb64")(payload.salt);
   run(`deriveKey=globalThis.__realDerive`);
   run(`teams=[]; stage="ready"; cryptoKey=globalThis.__testKey; salt=globalThis.__testSalt; view={teamId:null,screen:"list",personId:null,topicId:null,editing:false,organize:false};`);
-  env.promptAnswer="team-pass";
   importInput.files=[{text:get("encodeShareMarkdown")(payload)}];
   handlers.import({target:importInput});
+  await Promise.resolve();
+  env.passwordInputs["share-import-pass"].value="team-pass";
+  await get(`handle("import-pass-submit",{})`);
   await readers.at(-1).completion;
   const importedTeams=get("teams");
   assert.ok(importedTeams.length===1&&importedTeams[0].name==="やまだ家"&&importedTeams[0].id!==team.id);
@@ -180,6 +251,9 @@ test("復号中にロックすると読み込みがチーム追加や画面復�
   const beforeLockedImport=get("teams.length");
   importInput.files=[{text:get("encodeShareMarkdown")(payload)}];
   handlers.import({target:importInput});
+  await Promise.resolve();
+  env.passwordInputs["share-import-pass"].value="team-pass";
+  await get(`handle("import-pass-submit",{})`);
   await importDeriveStarted;
   await get("lockNow()");
   releaseImportDerive=context.__releaseDerive;

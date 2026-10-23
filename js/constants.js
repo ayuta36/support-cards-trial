@@ -47,7 +47,7 @@
    ============================================================ */
 "use strict";
 
-const APP_VERSION = "1.1.0-trial";
+const APP_VERSION = "1.1.1-trial";
 const STORE_KEY = "support-card-local-v1";   // 暗号化データの保存先
 const META_KEY  = "support-card-meta-v1";    // 試行回数など(非機密)
 const LEGACY_KEY = "support-card-data-v2";    // 旧版(暗号化なし)のデータ。移行を確認できたら削除する

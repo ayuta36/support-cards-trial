@@ -83,8 +83,11 @@ test("共有ファイルも解錠後に明示選択するまで読み取りを�
 });
 
 test("明示再開後の共有ファイルは取り込める", async () => {
-  env.promptAnswer="team-pass";
-  await get(`handle("resume-picker",{})`);
+  const resumed=get(`handle("resume-picker",{})`);
+  await Promise.resolve();
+  env.passwordInputs["share-import-pass"].value="team-pass";
+  await get(`handle("import-pass-submit",{})`);
+  await resumed;
   assert.ok(get("stage")==="ready"&&get("teams.length")===2&&readers.length===readersBeforeLockedImport+1);
 });
 
@@ -100,9 +103,12 @@ test("保留ファイルを破棄すると一時ファイル参照も読み込�
 
 test("読み込みの端末保存に失敗すると追加を取り消し画面遷移しない", async () => {
   await get("lockNow()"); await get(`unlock("device-pass")`);
-  env.promptAnswer="team-pass"; env.failStoreWrites=true;
+  env.failStoreWrites=true;
   const beforeFailedImport=get("teams.length"), beforeFailedImportView=get("view.teamId");
   importInput.files=[{text:get("encodeShareMarkdown")(payload)}]; handlers.import({target:importInput});
+  await Promise.resolve();
+  env.passwordInputs["share-import-pass"].value="team-pass";
+  await get(`handle("import-pass-submit",{})`);
   await readers.at(-1).completion;
   env.failStoreWrites=false;
   assert.ok(get("teams.length")==beforeFailedImport&&get("view.teamId")==beforeFailedImportView&&get("stage")==="home");

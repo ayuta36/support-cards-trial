@@ -38,7 +38,10 @@ function canSharePreparedFile(file){
 
 // ================= 描画 =================
 const app = document.getElementById("app");
+let lastRenderedModal=null;
 function render(){
+  const sameModal=!!modal&&modal===lastRenderedModal;
+  const retainedFocus=sameModal&&typeof focusLocation==="function"?focusLocation(document.activeElement):null;
   const screen = currentScreen();   // 描く画面の名前(state.js)。履歴の深さも同じ名前から決める
   let html = "";
   if(screen==="boot") html = `<div class="lock-wrap"><div class="loading">読み込み中…</div></div>`;
@@ -52,6 +55,8 @@ function render(){
   else html = listScreen(getTeam());
   app.innerHTML = `<div class="screen">${html}</div>` + (modal ? modalHtml() : "");
   bindEvents();
+  if(retainedFocus&&typeof focusElementAt==="function") focusElementAt(retainedFocus);
+  lastRenderedModal=modal;
   const f = document.getElementById("lk-pass") || document.getElementById("su-pass1");
   if(f) f.focus();
   // 画面が変わったとき(stage・view.screen・teamId・personId・topicId・audience のどれか)だけ先頭へ。
@@ -576,12 +581,17 @@ function modalHtml(){
       const orphanCount = orphanIds.reduce((sum,id)=>sum+(Array.isArray(topics[id])?topics[id].length:0),0);
       const filled = defs.filter(topic=>Array.isArray(topics[topic.id])&&topics[topic.id].length);
       const empty = defs.filter(topic=>!Array.isArray(topics[topic.id])||!topics[topic.id].length);
+      const topicPreview = (topicId, entries) => `<ul class="share-topic-entries">${(Array.isArray(entries)?entries:[]).map(entry=>{
+        const label=entry&&typeof entry==="object"?String(entry.label??""):"";
+        const value=entry&&typeof entry==="object"?String(entry.value??""):"";
+        return `<li>${label?`<b>${esc(label)}</b>`:""}${label&&value?`<br>`:""}${value?esc(value):(!label?`<span class="share-empty-entry">内容なし</span>`:"")}</li>`;
+      }).join("")}</ul>`;
       return `<section class="share-person">
-        <h3>${esc(person.name||"(名前なし)")}</h3>
-        <p class="share-profile">紹介文: ${person.note?`「${esc(person.note)}」`:"なし"} ・ 写真: ${person.photo?"含まれます":"なし"}</p>
-        ${filled.length?`<ul>${filled.map(topic=>`<li>${esc(topic.title||"(名前なし)")} — ${topics[topic.id].length}件</li>`).join("")}</ul>`:""}
+        <div class="share-person-head">${avatarHtml({name:person.name,photo:pickPhoto(person.photo)},52)}<div class="share-person-ident"><h3>${esc(person.name||"(名前なし)")}</h3>
+        <p class="share-profile">紹介文: ${person.note?`「${esc(String(person.note))}」`:"なし"} ・ 写真: ${pickPhoto(person.photo)?"含まれます":"なし"}</p></div></div>
+        ${filled.length?`<ul class="share-topic-list">${filled.map(topic=>`<li><details class="share-topic-preview"><summary>${esc(topic.title||"(名前なし)")} — ${topics[topic.id].length}件</summary>${topicPreview(topic.id,topics[topic.id])}</details></li>`).join("")}</ul>`:""}
         ${empty.length?`<p>内容が空のトピックも含まれます: ${empty.map(topic=>esc(topic.title||"(名前なし)")).join("、")}</p>`:""}
-        ${orphanIds.length?`<p class="share-orphan">一覧にない保存済みトピック ${orphanIds.length}件 / 内容 ${(orphanCount)}件も含まれます。</p>`:""}
+        ${orphanIds.length?`<details class="share-topic-preview share-orphan"><summary>一覧にない保存済みトピック ${orphanIds.length}件 / 内容 ${orphanCount}件も含まれます</summary>${orphanIds.map(id=>`<div><b>${esc(id)}</b>${topicPreview(id,topics[id])}</div>`).join("")}</details>`:""}
         ${chosen!=="all" && !defs.length?`<p>この相手に渡すトピックはありません。</p>`:""}
       </section>`;
     }).join("");
@@ -617,6 +627,28 @@ function modalHtml(){
       <div class="share-ready-actions"><button class="big-btn btn-secondary wide" data-act="share-download">.md ファイルを保存</button>
       <button class="text-link wide" data-act="close-share-ready">やめる</button></div>
       <p class="m-p sm">共有画面での選択やダウンロードを、このアプリは送信完了として確認できません。</p>
+    </div></div>`;
+  }
+  if(modal==="share-pass-create"){
+    return `<div class="overlay" data-act="close-modal"><div class="modal" data-stop>
+      <h2>共有パスコードを設定</h2>
+      <p class="m-p m-lead">4文字以上で設定します。ファイルと別の方法で相手に伝えてください。</p>
+      <label class="m-label" for="share-pass1">共有パスコード</label>
+      <div class="share-pass-row"><input class="input" id="share-pass1" type="password" autocomplete="new-password" data-autofocus aria-describedby="share-pass-error"><button class="share-pass-toggle" type="button" data-act="toggle-share-pass" data-for="share-pass1" aria-controls="share-pass1" aria-label="共有パスコードを表示" aria-pressed="false">表示</button></div>
+      <label class="m-label" for="share-pass2">もう一度入力</label>
+      <div class="share-pass-row"><input class="input" id="share-pass2" type="password" autocomplete="new-password" aria-describedby="share-pass-error"><button class="share-pass-toggle" type="button" data-act="toggle-share-pass" data-for="share-pass2" aria-controls="share-pass2" aria-label="確認用パスコードを表示" aria-pressed="false">表示</button></div>
+      <div class="lock-error" id="share-pass-error" role="alert" aria-live="assertive"></div>
+      <div class="btn-row"><button class="big-btn btn-secondary" data-act="close-modal">戻る</button><button class="big-btn btn-primary" data-act="share-pass-submit">ファイルを作る</button></div>
+    </div></div>`;
+  }
+  if(modal==="share-pass-import"){
+    return `<div class="overlay" data-act="close-modal"><div class="modal" data-stop>
+      <h2>共有パスコードを入力</h2>
+      <p class="m-p m-lead">ファイルを受け取ったときに案内されたパスコードを入力してください。</p>
+      <label class="m-label" for="share-import-pass">共有パスコード</label>
+      <div class="share-pass-row"><input class="input" id="share-import-pass" type="password" autocomplete="off" data-autofocus aria-describedby="share-import-pass-error"><button class="share-pass-toggle" type="button" data-act="toggle-share-pass" data-for="share-import-pass" aria-controls="share-import-pass" aria-label="共有パスコードを表示" aria-pressed="false">表示</button></div>
+      <div class="lock-error" id="share-import-pass-error" role="alert" aria-live="assertive"></div>
+      <div class="btn-row"><button class="big-btn btn-secondary" data-act="close-modal">やめる</button><button class="big-btn btn-primary" data-act="import-pass-submit">読み込む</button></div>
     </div></div>`;
   }
   if(modal==="resume-picker"){

@@ -169,15 +169,16 @@ test("承認した内容のスナップショットを書き出す(確認後に�
   await startSession("snap-session", [makeFullTeam(defs)], "team_full");
   run(`stage="ready"; ${listView("team_full")}`);
   await get(`handle("share-team",{})`);   // 初期値の学生向けで承認する
-  env.promptAnswer = PASS;
   context.__realDerive = get("deriveKey");
   let signal; const waiting = new Promise((resolve) => { signal = resolve; });
   context.__started = signal;
   run(`deriveKey=async (...args)=>{ globalThis.__started(); await new Promise(resolve=>globalThis.__release=resolve); return globalThis.__realDerive(...args); }`);
   const pending = get(`handle("share-proceed",{})`);
+  const submitting = env.submitSharePasscode(PASS);
   await waiting;
   run(`teams[0].people[0].topicDefs.find(d=>d.id==="emergency").audience=["student","staff"]; teams[0].people[0].topics.communication[0].value="確認後に書きかえた"`);
   context.__release();
+  await submitting;
   await pending;
   run(`deriveKey=globalThis.__realDerive`);
   await get(`handle("share-download",{})`);
@@ -191,16 +192,17 @@ test("パスコードを決めた後、暗号化の途中でロックすると�
   await startSession("lock-session2", [makeFullTeam(defs)], "team_full");
   run(`stage="ready"; ${listView("team_full")}`);
   await get(`handle("share-team",{})`);
-  env.promptAnswer = PASS;
   context.__realDerive = get("deriveKey");
   let signal; const waiting = new Promise((resolve) => { signal = resolve; });
   context.__started = signal;
   run(`deriveKey=async (...args)=>{ globalThis.__started(); await new Promise(resolve=>globalThis.__release=resolve); return globalThis.__realDerive(...args); }`);
   const before = downloads.length;
   const pending = get(`handle("share-proceed",{})`);
+  const submitting = env.submitSharePasscode(PASS);
   await waiting;
   await get("lockNow()");
   context.__release();
+  await submitting;
   await pending;
   run(`deriveKey=globalThis.__realDerive`);
   assert.strictEqual(downloads.length, before);

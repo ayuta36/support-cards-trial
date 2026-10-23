@@ -45,7 +45,6 @@ let toastTimer = null, screenError = "", lockWaitMsg = "";
 let idleTimer = null;
 let shareAttempt = 0;
 let sessionEpoch = 0;
-let shareReturnFocus = null;
 let persistedTeams = [];
 let saveGeneration = 0;
 let storeBaselineRaw = undefined; // undefined=未確定、null=保存なし、文字列=最後に確認した暗号化保存
@@ -84,6 +83,7 @@ function saveMeta(m){ try{ localStorage.setItem(META_KEY, JSON.stringify(m)); }c
 // ================= セキュリティ:自動ロック・覗き見ガード =================
 function lockNow(){
   stopSpeak();
+  if(typeof clearSensitiveDialogs==="function") clearSensitiveDialogs();
   if(typeof clearPrivateNoteDrafts==="function") clearPrivateNoteDrafts();
   shareAttempt++;
   saveGeneration++;

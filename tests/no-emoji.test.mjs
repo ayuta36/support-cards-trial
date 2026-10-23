@@ -76,7 +76,7 @@ test("(準備)主な画面・各モーダル・印刷を描画して集める(�
   run(`localStorage.setItem("support-card-data-v2", "{}")`); toHome(); await get(`handle("settings",{})`); snap("モーダル:設定(旧データあり)"); await closeModal();
   run(`localStorage.removeItem("support-card-data-v2")`);
   toList("team_e"); await get(`handle("share-team",{})`); snap("共有前の確認");
-  env.promptAnswer = PASS; await get(`handle("share-proceed",{})`);
+  await get(`handle("share-proceed",{})`); await env.submitSharePasscode(PASS);
   assert.strictEqual(get("modal"), "share-ready");
   snap("共有ファイルの準備"); await get(`handle("close-share-ready",{})`);
   run(`stage="home"; pendingPicker={type:"photo",file:{},target:{},expiresAt:Date.now()+60000}; modal="resume-picker"; render()`); snap("モーダル:選んだファイルの保留");
