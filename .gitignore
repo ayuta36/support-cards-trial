@@ -1,0 +1,9 @@
+/HANDOFF_*
+/.claude/
+/.codex/
+/docs/
+/CHANGELOG.md
+/PRIVACY.md
+/ROADMAP.md
+*.scard
+support-card-share-*.md

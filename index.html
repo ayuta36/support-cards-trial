@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="description" content="本人に関する情報を、必要な人へ伝えるプロフィールカード">
+
+<!-- セキュリティ:外部への接続を一切許可しない -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+
+<title>サポートカード</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect x=%222%22 y=%222%22 width=%2228%22 height=%2228%22 rx=%226%22 fill=%22%232F6E96%22/><path d=%22M9 12h14M9 20h14%22 stroke=%22%23FFFFFF%22 stroke-width=%222.6%22 stroke-linecap=%22round%22/></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"><div class="lock-wrap"><div class="loading">読み込み中…</div></div></div>
+<div id="print" class="print-area"></div>
+<div id="toast" class="toast" role="status">保存しました</div>
+<input type="file" id="photoInput" accept="image/*" style="display:none">
+<!-- 読み込み用の2つの入力には accept を付けない。付けると iPhone で、指定外の種類のファイル(とくに独自の拡張子 .scard)が灰色になって選べないことがある(S7)。中身はアプリ側で検証している -->
+<input type="file" id="importInput" style="display:none">
+<input type="file" id="legacyScardInput" style="display:none">
+<script src="js/constants.js"></script>
+<script src="js/util.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/data.js"></script>
+<script src="js/private-notes.js"></script>
+<script src="js/reorder.js"></script>
+<script src="js/share-format.js"></script>
+<script src="js/state.js"></script>
+<script src="js/views.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

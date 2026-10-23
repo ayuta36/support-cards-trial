@@ -1,0 +1,506 @@
+/* ============================================================
+   サポートカード style.css
+   ------------------------------------------------------------
+   白を基調に、薄い水色と薄いピンクの面で区切る。角ゴシック、小さな角丸、影と動きはなし。
+   トピックやチームの色は使わない(保存データの color は表示に使わない)。色で区別するのは緊急だけ(赤い線と文字)。
+   色はすべて下の :root のトークンで決める。4つのテーマ(milk・sakura・sora・wakaba)は、body[data-theme] で
+   主な操作の色と薄い面の色だけを変える(どれも白地)。文字は白地・薄い面の上で4.5:1以上、枠は3:1以上。
+   ============================================================ */
+
+:root{
+  /* 文字サイズの設定(標準 0px / 大きめ +2px / 特大 +4px)で足す大きさ。calc(13px + var(--fs-add)) のように使うと、設定が効く */
+  --fs-add:0px;
+  --bg:#FFFFFF;
+  --card:#FFFFFF;
+  --blue-wash:#EEF6FB;          /* 薄い水色の面 */
+  --pink-wash:#FCEFF3;          /* 薄いピンクの面 */
+  --pink-wash-hover:#F8E1E8;
+  --wash:#EEF6FB;               /* テーマの薄い面(ホバー・帯・人物の見出し)。テーマごとに変わる */
+  --wash-hover:#E2EFF8;
+  --line:#E3E8EC;               /* 区切り線・カードの枠 */
+  --line-strong:#76848D;        /* 入力欄・枠だけのボタンの枠(白地・薄い面の上で3:1以上) */
+  --ink:#333333;
+  --sub:#555F66;
+  --faint:#5A666D;
+  --primary:#2F6E96;            /* 主な操作(白い文字で4.5:1以上) */
+  --primary-hover:#245777;
+  --teal:#2F6E96;               /* --primary と同じ値(以前の名前。互換のために残す) */
+  --accent-pink:#A8456A;        /* ピンクを文字に使うとき(白地・薄いピンクの面で4.5:1以上) */
+  --red:#A9473A;                /* 緊急・削除 */
+  --danger:#A9473A;
+  --radius-s:6px;
+  --radius-m:8px;
+  --radius-l:8px;
+  --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Yu Gothic","YuGothic",Meiryo,sans-serif;
+  --shadow-1:0 1px 2px rgba(0,0,0,.05);
+}
+
+/* ---- テーマ(設定から選べる4つ)。白地のまま、主な操作の色と薄い面の色だけが違う。milk は :root の値 ---- */
+body[data-theme="sakura"]{--primary:#7B4B80;--primary-hover:#633C68;--teal:#7B4B80;--wash:#FCEFF3;--wash-hover:#F8E1E8}
+body[data-theme="sora"]{--primary:#12689E;--primary-hover:#0E5582;--teal:#12689E;--wash:#E2F2FA;--wash-hover:#D2E8F6}
+body[data-theme="wakaba"]{--primary:#3A7452;--primary-hover:#2E5E42;--teal:#3A7452;--wash:#ECF5EE;--wash-hover:#DCEDE0}
+
+/* ---- 文字サイズ(標準 / 大きめ / 特大)。calc(Npx + var(--fs-add)) で書いた文字すべてに効く ---- */
+body[data-fs="l"]{--fs-add:2px}
+body[data-fs="xl"]{--fs-add:4px}
+
+/* ---- ベース ---- */
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--ink);min-height:100vh;
+  font-family:var(--font);font-size:calc(16px + var(--fs-add));font-weight:400;line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;font-size:inherit;font-weight:500;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+input,textarea{font-family:inherit;font-size:calc(16px + var(--fs-add));font-weight:400;color:var(--ink)}
+::placeholder{color:var(--faint);opacity:1}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+[tabindex="-1"]:focus{outline:none}
+#app{max-width:800px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.icon{flex-shrink:0;pointer-events:none}
+
+/* ============ ボタン ============ */
+/* 主な操作は --primary の塗りに白い文字、2番目の操作は白地に枠と --primary の文字、削除は白地に --red の枠と文字。高さは44px以上 */
+.big-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:11px 18px;border:1px solid var(--line-strong);border-radius:var(--radius-m);
+  background:var(--card);color:var(--primary);
+  font-size:calc(16px + var(--fs-add));font-weight:700;line-height:1.4;text-align:center;
+  transition:background-color .1s,border-color .1s,color .1s;
+}
+.big-btn:hover{background:var(--wash);border-color:var(--primary)}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#FFFFFF}
+.btn-primary:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+.btn-secondary{background:var(--card);border-color:var(--line-strong);color:var(--primary)}
+.btn-danger{background:var(--card);border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:var(--pink-wash);border-color:var(--red)}
+.wide{width:100%}
+.btn-row{display:flex;align-items:stretch;gap:8px;margin-top:12px}
+.btn-row .big-btn{flex:1}
+.btn-row .btn-primary{flex:2}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tool-btn{
+  display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 14px;
+  border:1px solid var(--line-strong);border-radius:var(--radius-m);background:var(--card);color:var(--primary);
+  font-size:calc(14px + var(--fs-add));font-weight:500;line-height:1.4;
+  transition:background-color .1s,border-color .1s;
+}
+.tool-btn:hover{background:var(--wash);border-color:var(--primary)}
+.tool-btn.em-btn{background:var(--card);border-color:var(--red);color:var(--red);font-weight:700}
+.tool-btn.em-btn:hover{background:var(--pink-wash);border-color:var(--red)}
+.photo-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 14px;
+  border:1px solid var(--line-strong);border-radius:var(--radius-m);background:var(--card);color:var(--primary);
+  font-size:calc(14px + var(--fs-add));font-weight:500;
+}
+.photo-btn:hover{background:var(--wash);border-color:var(--primary)}
+.photo-btn.danger{border-color:var(--red);color:var(--red)}
+.back-link{
+  display:inline-flex;align-items:center;min-height:44px;padding:6px 0;margin-bottom:4px;
+  background:none;border:none;color:var(--primary);font-size:calc(15px + var(--fs-add));text-align:left;
+}
+.back-link:hover{text-decoration:underline}
+.text-link{
+  min-height:44px;margin-top:12px;background:none;border:none;color:var(--primary);
+  font-size:calc(14px + var(--fs-add));text-decoration:underline;text-underline-offset:3px;
+}
+.remove-link{
+  align-self:flex-end;min-height:44px;padding:8px 10px;background:none;border:none;color:var(--red);
+  font-size:calc(14px + var(--fs-add));text-decoration:underline;text-underline-offset:3px;
+}
+.danger-link{
+  display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:12px;padding:10px 14px;
+  background:var(--card);border:1px solid var(--red);border-radius:var(--radius-m);color:var(--red);
+  font-size:calc(14px + var(--fs-add));font-weight:700;
+}
+.danger-link:hover{background:var(--pink-wash)}
+
+/* ============ 見出し・案内の文字 ============ */
+.list-head{padding:32px 24px 8px}
+.p-head{padding:16px 24px 8px}
+.brand{font-size:calc(13px + var(--fs-add));font-weight:700;letter-spacing:.08em;color:var(--sub)}
+.list-title{font-size:calc(26px + var(--fs-add));font-weight:700;line-height:1.4;margin:8px 0 6px;overflow-wrap:anywhere}
+.list-sub{font-size:calc(15px + var(--fs-add));color:var(--sub);line-height:1.8}
+.greet{font-size:calc(15px + var(--fs-add));color:var(--sub);line-height:1.8}
+.empty{text-align:center;color:var(--sub);font-size:calc(15px + var(--fs-add));line-height:1.9;padding:32px 0}
+.footer-hint{text-align:center;color:var(--sub);font-size:calc(13px + var(--fs-add));line-height:1.8;padding:8px 24px 32px}
+
+/* ============ アバター ============ */
+/* 写真がなければ、名前の最初の1文字を薄い水色の丸に出す */
+.avatar{flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;background:var(--blue-wash);color:var(--primary);font-weight:700;line-height:1}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.avatar.photo{border:1px solid var(--line)}
+.hero .avatar,.sp-hero .avatar{background:var(--card)}   /* 薄い面の見出しの上では、丸を白にして見えるようにする */
+
+/* ============ 一覧の行(チーム・人物) ============ */
+.list-body{display:flex;flex-direction:column;padding:8px 24px 40px}
+.person-card,.team-card{
+  display:flex;align-items:center;gap:14px;width:100%;min-height:76px;padding:12px 8px;
+  background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;
+  color:var(--ink);text-align:left;transition:background-color .1s;
+}
+.person-card:hover,.team-card:hover{background:var(--wash)}
+.person-card:active,.team-card:active{background:var(--wash-hover)}
+.person-body,.team-body{flex:1;min-width:0}
+.team-name{display:block;font-size:calc(18px + var(--fs-add));font-weight:700;line-height:1.5;overflow-wrap:anywhere}
+.team-sub{display:block;margin-top:2px;font-size:calc(14px + var(--fs-add));color:var(--sub)}
+.team-badge{display:inline-block;margin-left:6px;padding:0 10px;border-radius:999px;background:var(--pink-wash);color:var(--ink);font-size:calc(12px + var(--fs-add));font-weight:500;line-height:1.7}
+.chev{margin-left:auto;color:var(--sub);font-size:22px;line-height:1}
+.add-card,.add-tile{
+  display:flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:12px 16px;
+  background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);color:var(--primary);
+  font-size:calc(16px + var(--fs-add));font-weight:700;
+}
+.add-card{width:100%;margin-top:16px}
+.add-card:hover,.add-tile:hover{background:var(--wash);border-color:var(--primary)}
+
+/* ============ 人物ページ ============ */
+.hero{
+  display:flex;align-items:center;gap:16px;width:100%;padding:16px;
+  background:var(--wash);border:1px solid var(--line);border-radius:var(--radius-m);color:var(--ink);text-align:left;
+  transition:background-color .1s;
+}
+.hero > span:last-child{flex:1;min-width:0}
+button.hero:hover{background:var(--wash-hover)}
+.hero-name{font-size:calc(22px + var(--fs-add));font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.hero-note{margin-top:2px;font-size:calc(15px + var(--fs-add));line-height:1.7;color:var(--sub);overflow-wrap:anywhere}
+.hero-updated{margin-top:4px;font-size:calc(13px + var(--fs-add));color:var(--sub)}
+.hero-hint{margin-top:4px;font-size:calc(13px + var(--fs-add));color:var(--primary)}
+
+.grid{display:grid;grid-template-columns:1fr;gap:12px;padding:16px 24px}
+.tile{
+  position:relative;display:grid;grid-template-columns:28px minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-items:start;align-content:start;
+  min-height:76px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-m);
+  color:var(--ink);text-align:left;transition:background-color .1s,border-color .1s;
+}
+button.tile:hover{background:var(--wash);border-color:var(--primary)}
+.tile-icon{grid-column:1;grid-row:1 / span 2;align-self:start;display:flex;align-items:center;height:calc((16px + var(--fs-add)) * 1.5);color:var(--primary)}   /* タイトルの1行目の高さに合わせて、アイコンを縦に中央にそろえる */
+.tile-title{grid-column:2;grid-row:1;font-size:calc(16px + var(--fs-add));font-weight:700;line-height:1.5;line-break:strict;overflow-wrap:anywhere}   /* 「コミュニケーシ/ョン」のように、行頭に小さい「ョ」などが来ないようにする */
+.tile-desc{grid-column:2;grid-row:2;font-size:calc(13px + var(--fs-add));line-height:1.6;color:var(--sub)}
+.tile-badge{grid-column:3;grid-row:1 / span 2;align-self:start;padding:0 10px;border-radius:999px;background:var(--wash);color:var(--ink);font-size:calc(12px + var(--fs-add));font-weight:500;line-height:1.7;white-space:nowrap}
+.tile-badge.blank{background:transparent;border:1px solid var(--line);color:var(--sub)}   /* 「未記入」。件数のバッジと見分ける */
+/* 緊急のトピックだけ、赤い線(左に太い線)と文字で区別する */
+.tile.urgent{border-left:4px solid var(--red);padding-left:11px}
+.tile.urgent .tile-icon,.tile.urgent .tile-title{color:var(--red)}
+button.tile.urgent:hover{background:var(--pink-wash);border-color:var(--red)}
+.tile-aud{grid-column:2 / -1;grid-row:3;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.aud-chip{padding:0 10px;border-radius:999px;background:var(--wash);color:var(--ink);font-size:calc(12px + var(--fs-add));font-weight:500;line-height:1.7;white-space:normal}
+.aud-chip.family{background:var(--pink-wash);color:var(--accent-pink)}
+/* 整理モードの操作(上へ・下へ・削除・並べ替え)。44px四方にしたので、アイコンやタイトルに重ならないよう、タイルの流れの中に置く(狭い幅では折り返す) */
+.tile-tools{grid-column:2 / -1;grid-row:3;display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.organize-tile .tile-aud{grid-row:4}
+.tile-tool{
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);color:var(--primary);
+}
+.tile-tool:hover{background:var(--wash);border-color:var(--primary)}
+.tile-tool-danger{border-color:var(--red);color:var(--red)}
+.tile-tool-danger:hover{background:var(--pink-wash);border-color:var(--red)}
+.tile-drag-handle{
+  width:44px;height:44px;min-width:44px;display:flex;align-items:center;justify-content:center;
+  background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);color:var(--sub);
+  cursor:grab;touch-action:none;user-select:none;
+}
+.tile-drag-handle:active{cursor:grabbing;background:var(--wash-hover)}
+.tile[data-dragging="true"]{opacity:.6;background:var(--wash)}
+.tile[data-drag-over="true"]{border-bottom:3px solid var(--primary)}
+.add-tile{min-height:76px}
+
+/* ============ トピックの中身 ============ */
+.d-head{padding:16px 24px 20px;background:var(--wash);border-bottom:1px solid var(--line)}
+.d-head.urgent{background:var(--pink-wash);border-left:4px solid var(--red)}
+.d-bar{display:flex;justify-content:space-between;gap:10px}
+.d-back{
+  display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 14px;margin-bottom:12px;
+  background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);color:var(--primary);
+  font-size:calc(14px + var(--fs-add));font-weight:500;
+}
+.d-back:hover{border-color:var(--primary)}
+.d-row{display:flex;align-items:center;gap:14px}
+.d-icon{display:flex;flex-shrink:0;color:var(--primary)}
+.d-head.urgent .d-icon,.d-head.urgent .d-title{color:var(--red)}
+.d-person{font-size:calc(14px + var(--fs-add));color:var(--sub);overflow-wrap:anywhere}
+.d-title{margin-top:2px;font-size:calc(24px + var(--fs-add));font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.d-body{display:flex;flex-direction:column;padding:16px 24px 36px}
+.d-body > .big-btn{margin-top:20px}
+/* 項目(見出しと内容)。中立の色。緊急のトピックの中だけ、赤い線(左に太い線)と文字 */
+.entry{padding:16px 4px 18px;border-bottom:1px solid var(--line)}
+.entry-label{margin-bottom:4px;font-size:calc(14px + var(--fs-add));font-weight:700;color:var(--primary);overflow-wrap:anywhere}
+.entry-value{font-size:calc(18px + var(--fs-add) * 1.5);line-height:1.8;white-space:pre-wrap;word-break:break-word}
+.urgent .entry{padding-left:14px;border-left:4px solid var(--red)}
+.urgent .entry-label{color:var(--red)}
+/* 記入例(家族向け): 編集モードの入力欄の上と、未記入の詳細画面に出す */
+.topic-hint{padding:8px 0 8px 12px;border-left:3px solid var(--primary);font-size:calc(14px + var(--fs-add));line-height:1.8;color:var(--sub)}
+
+/* ---- 編集フォーム ---- */
+.edit-card{display:flex;flex-direction:column;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+.input,.textarea{
+  width:100%;min-height:46px;padding:11px 14px;background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);
+}
+.textarea{resize:vertical;line-height:1.75}
+.input:focus,.textarea:focus{border-color:var(--primary)}
+
+/* ============ モーダル(編集用の小窓) ============ */
+.overlay{
+  position:fixed;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;
+  padding:clamp(12px,4vh,36px) 16px;background:rgba(51,51,51,.45);
+}
+.modal{
+  width:100%;max-width:520px;max-height:calc(100dvh - 24px);margin:auto 0;overflow-y:auto;
+  padding:22px clamp(18px,4vw,28px);background:var(--card);border:1px solid var(--line);border-radius:var(--radius-l);box-shadow:var(--shadow-1);
+}
+.modal h2{font-size:calc(20px + var(--fs-add));font-weight:700;line-height:1.5;margin-bottom:14px}
+.m-label{margin:16px 0 6px;font-size:calc(14px + var(--fs-add));font-weight:700;color:var(--ink)}
+.m-p{font-size:calc(14px + var(--fs-add));line-height:1.8;color:var(--sub)}
+.m-p.sm{font-size:calc(13px + var(--fs-add))}
+.m-p.md{font-size:calc(15px + var(--fs-add))}
+.m-lead{margin-bottom:12px}
+.m-note{margin-top:8px}
+.m-danger{margin:14px 0 8px;color:var(--red)}
+.m-danger-text{color:var(--red)}
+.m-stack{display:flex;flex-direction:column;gap:8px}
+.m-about{font-size:calc(15px + var(--fs-add));line-height:1.9;color:var(--ink)}
+.m-about p{margin-bottom:10px;color:var(--sub)}
+.m-about .m-about-lead{color:var(--ink)}
+.m-about h3{margin-bottom:2px;font-size:calc(15px + var(--fs-add));font-weight:700}
+.m-photo-row{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.m-photo-actions{display:flex;flex-direction:column;gap:6px}
+.share-warning{
+  margin:0 0 12px;padding:10px 12px;background:var(--wash);border-left:3px solid var(--primary);border-radius:0 var(--radius-s) var(--radius-s) 0;
+  font-size:calc(14px + var(--fs-add));line-height:1.8;
+}
+.share-warning + .share-warning{margin-top:10px}
+.share-people{max-height:32vh;margin:12px 0;overflow-y:auto;overscroll-behavior:contain}
+.share-person{padding:12px 0;border-bottom:1px solid var(--line);font-size:calc(13px + var(--fs-add));line-height:1.7;color:var(--sub)}
+.share-person h3{margin-bottom:3px;font-size:calc(16px + var(--fs-add));font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.share-person ul{margin:6px 0;padding-left:20px}
+.share-profile{margin-bottom:4px}
+.share-orphan{margin-top:5px;font-weight:700;color:var(--red)}
+.share-file-info{padding:10px 0;font-size:calc(14px + var(--fs-add));line-height:1.8;color:var(--sub);overflow-wrap:anywhere}
+.share-ready-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+
+/* ============ 設定 ============ */
+/* 区分のタブ(丸い形)。文字の大きさ・表示の切り替え(すべて・学生向け・運営向け)に使う */
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg-btn{
+  flex:1 1 0;min-height:44px;padding:8px 14px;background:var(--card);border:1px solid var(--line-strong);border-radius:999px;color:var(--primary);
+  font-size:calc(14px + var(--fs-add));font-weight:500;text-align:center;transition:background-color .1s,border-color .1s,color .1s;
+}
+.seg-btn:hover{background:var(--wash);border-color:var(--primary)}
+.seg-btn.on{background:var(--primary);border-color:var(--primary);color:#FFFFFF;font-weight:700}
+.theme-row{display:flex;flex-wrap:wrap;justify-content:space-around;gap:8px}
+.theme-btn{
+  display:flex;flex-direction:column;align-items:center;gap:6px;min-width:64px;min-height:44px;padding:4px;
+  background:none;border:none;font-size:calc(13px + var(--fs-add));font-weight:500;color:var(--sub);
+}
+.theme-dot{width:40px;height:40px;border-radius:50%;border:3px solid transparent}
+.theme-btn.on{color:var(--ink);font-weight:700}
+.theme-btn.on .theme-dot{border-color:var(--ink)}
+
+/* ============ のぞき見を防ぐぼかし(バックグラウンドになったとき) ============ */
+body.peek-guard #app{filter:blur(22px)}
+
+/* ============ 相手別の公開設定・受け取った情報 ============ */
+/* 人物ページの「表示: すべて / 学生向け / 運営向け」 */
+.aud-switch{margin-top:14px}
+.aud-switch-label{display:block;margin-bottom:6px;font-size:calc(13px + var(--fs-add));font-weight:700;color:var(--sub)}
+.aud-switch .seg{max-width:460px}
+.view-note{
+  margin-top:10px;padding:10px 12px;background:var(--wash);border-left:3px solid var(--primary);border-radius:0 var(--radius-s) var(--radius-s) 0;
+  font-size:calc(14px + var(--fs-add));font-weight:500;line-height:1.7;color:var(--ink);
+}
+/* 公開先のチェック(トピックの編集)と、書き出す相手の選択(共有前の確認画面)。タップ領域は44px以上 */
+.aud-title{font-size:calc(15px + var(--fs-add));font-weight:700;color:var(--ink)}
+.aud-check{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px 2px;font-size:calc(15px + var(--fs-add));line-height:1.5;cursor:pointer}
+.aud-check input{width:24px;height:24px;flex-shrink:0;accent-color:var(--primary);cursor:pointer}
+.aud-check.off{color:var(--sub);cursor:default}
+.aud-check.off input{cursor:default}
+.aud-note{font-size:calc(13px + var(--fs-add));line-height:1.7;color:var(--sub)}
+.share-aud{margin:0 0 12px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* 受け取った情報の帯(チーム一覧と人物ページの上部) */
+.notice{
+  margin-bottom:12px;padding:12px 14px;background:var(--wash);border-left:3px solid var(--primary);border-radius:0 var(--radius-m) var(--radius-m) 0;
+  font-size:calc(14px + var(--fs-add));line-height:1.8;color:var(--ink);
+}
+.received-banner{margin:12px 0 4px}
+.banner-del{
+  display:block;min-height:44px;margin-top:10px;padding:10px 16px;background:var(--card);border:1px solid var(--red);border-radius:var(--radius-m);
+  color:var(--red);font-size:calc(14px + var(--fs-add));font-weight:700;text-align:left;
+}
+.banner-edit{
+  display:block;min-height:44px;margin-top:10px;padding:10px 16px;background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);
+  color:var(--primary);font-size:calc(14px + var(--fs-add));line-height:1.5;text-align:left;
+}
+.banner-del:hover{background:var(--pink-wash)}
+.banner-edit:hover{background:var(--wash);border-color:var(--primary)}
+
+/* ---- この端末だけのメモ(共有されるカードの内容とは別。薄いピンクの面) ---- */
+.private-note-editor{margin:20px 24px 4px;padding:16px;background:var(--pink-wash);border:1px solid var(--line);border-radius:var(--radius-m)}
+.private-note-label{display:block;margin-bottom:6px;font-size:calc(16px + var(--fs-add));font-weight:700;color:var(--ink)}
+.private-note-input{
+  width:100%;min-height:116px;padding:12px;background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);
+  line-height:1.7;resize:vertical;
+}
+.private-note-input:focus{border-color:var(--primary)}
+.private-note-help{margin-top:6px;font-size:calc(13px + var(--fs-add));line-height:1.7;color:var(--sub)}
+.private-note-unsaved{display:inline-block;margin-left:6px;font-weight:700;color:var(--accent-pink)}
+.private-note-lock-help{margin:4px 0 10px;font-size:calc(12px + var(--fs-add));line-height:1.6;color:var(--sub)}
+
+/* ============ 学生向け「はじめましてページ」 ============ */
+/* 文書のように読む1ページ。本文は17px、行間1.9、トピックごとに見出しと線で区切る。見るだけ */
+.sp{display:flex;flex-direction:column;gap:28px;padding:8px 24px 40px;line-height:1.9}
+.sp-hero{display:flex;align-items:center;gap:18px;padding:18px;background:var(--wash);border-radius:var(--radius-m)}
+.sp-hero-body{min-width:0}
+.sp-tools{margin-top:0}
+.sp-title{font-size:calc(24px + var(--fs-add));font-weight:700;line-height:1.5;word-break:break-word}
+.sp-lead{margin-top:4px;font-size:calc(15px + var(--fs-add));line-height:1.8;color:var(--sub)}
+.sp-note{margin-top:8px;font-size:calc(17px + var(--fs-add));line-height:1.9;word-break:break-word}
+.sp-topic{display:flex;flex-direction:column}
+.sp-topic-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding-bottom:8px;border-bottom:2px solid var(--primary)}
+.sp-topic.urgent .sp-topic-head{border-bottom-color:var(--red)}
+.sp-icon{display:flex;color:var(--primary)}
+.sp-topic.urgent .sp-icon,.sp-topic.urgent .sp-topic-title{color:var(--red)}
+.sp-topic-title{flex:1;min-width:7em;font-size:calc(20px + var(--fs-add));font-weight:700;line-height:1.5;line-break:strict}
+.sp-speak{
+  display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 14px;background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);
+  color:var(--primary);font-size:calc(14px + var(--fs-add));font-weight:500;
+}
+.sp-speak:hover{background:var(--wash);border-color:var(--primary)}
+.sp .entry-value{font-size:calc(17px + var(--fs-add));line-height:1.9}
+.sp-empty{padding:18px 0;border-top:1px solid var(--line);font-size:calc(15px + var(--fs-add));line-height:1.8;color:var(--sub)}
+/* 固定の案内(いつも出す)。薄いピンクの面と左の線 */
+.sp-care{padding:16px 18px;background:var(--pink-wash);border-left:4px solid var(--accent-pink);border-radius:0 var(--radius-m) var(--radius-m) 0}
+.sp-care p{font-size:calc(17px + var(--fs-add));font-weight:700;line-height:1.9;color:var(--ink)}
+
+/* ============ 運営向け「緊急時の情報(全員分)」の一覧 ============ */
+.em-note{margin-top:8px;font-size:calc(13px + var(--fs-add));line-height:1.8;color:var(--sub)}
+.em-list{display:flex;flex-direction:column;gap:20px;padding:12px 24px 40px}
+.em-person{
+  display:flex;flex-direction:column;gap:8px;padding:14px 16px 16px;
+  background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:var(--radius-m);
+}
+.em-person-head{display:flex;align-items:center;gap:12px}
+.em-name{font-size:calc(20px + var(--fs-add));font-weight:700;line-height:1.5;word-break:break-word}
+.em-sec{display:flex;flex-direction:column;gap:4px;padding:4px 0}
+.em-sec-title{font-size:calc(14px + var(--fs-add));font-weight:700;color:var(--sub)}
+.em-sec .entry{padding:8px 0 10px}
+.em-sec .entry-label{font-size:calc(13px + var(--fs-add))}
+.em-sec .entry-value{font-size:calc(16px + var(--fs-add));line-height:1.7}
+.em-empty{
+  padding:8px 12px;background:var(--pink-wash);border-left:3px solid var(--red);border-radius:0 var(--radius-s) var(--radius-s) 0;
+  font-size:calc(15px + var(--fs-add));font-weight:500;line-height:1.7;color:var(--ink);
+}
+/* ホームの「緊急時の情報（すべてのチーム）」:チームごとのまとまり。人物のカードの間(20px)より、チームの間を広くとる */
+.em-all-title{word-break:keep-all}   /* 狭い画面で「（すべて／のチーム）」のように、括弧の途中で折り返さない(折り返すなら括弧の手前)。入りきらない長さのときは、.list-title の overflow-wrap で折り返す */
+.em-list.em-all{gap:32px}
+.em-team{display:flex;flex-direction:column;gap:14px}
+.em-team-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding-bottom:8px;border-bottom:2px solid var(--primary)}
+.em-team-name{font-size:calc(20px + var(--fs-add));font-weight:700;line-height:1.4;word-break:break-word}
+.em-team-sub{font-size:calc(13px + var(--fs-add));color:var(--sub)}
+.em-team .empty{padding:12px 0}
+
+/* ============ ホーム(チーム一覧) ============ */
+.home-head{padding-bottom:16px}
+.home-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 24px 20px}
+.home-emergency{
+  grid-column:1 / -1;display:flex;align-items:center;gap:12px;min-height:68px;padding:12px 16px;
+  background:var(--pink-wash);border:1px solid var(--red);border-left-width:4px;border-radius:var(--radius-m);color:var(--red);text-align:left;
+}
+.home-emergency:hover{background:var(--pink-wash-hover)}
+.home-action-body{display:flex;flex:1;flex-direction:column;min-width:0}
+.home-action-title{font-size:calc(17px + var(--fs-add));font-weight:700;color:var(--red)}
+.home-action-desc{font-size:calc(13px + var(--fs-add));font-weight:400;color:var(--sub)}
+.home-action-arrow{margin-left:auto;font-size:26px;line-height:1;color:var(--red)}
+.home-primary,.home-secondary{
+  min-height:52px;padding:11px 14px;border:1px solid var(--primary);border-radius:var(--radius-m);
+  font-size:calc(15px + var(--fs-add));font-weight:700;text-align:center;transition:background-color .1s,border-color .1s;
+}
+.home-primary{background:var(--primary);color:#FFFFFF}
+.home-primary:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+.home-secondary{background:var(--card);border-color:var(--line-strong);color:var(--primary)}
+.home-secondary:hover{background:var(--wash);border-color:var(--primary)}
+.home-section-head{display:flex;align-items:baseline;gap:10px;margin:0 24px;padding:8px 0 6px;border-bottom:1px solid var(--line)}
+.home-section-head h2{font-size:calc(18px + var(--fs-add));font-weight:700}
+.home-section-head span{font-size:calc(13px + var(--fs-add));color:var(--sub)}
+.home-list{padding-top:0}
+.home-empty{padding:18px 8px;text-align:left;color:var(--sub)}
+.home-utility{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 24px;padding:16px 8px 28px;border-top:1px solid var(--line)}
+.home-utility-link{
+  min-height:44px;padding:8px 0;background:none;border:0;color:var(--primary);
+  font-size:calc(14px + var(--fs-add));text-decoration:underline;text-underline-offset:3px;
+}
+
+/* ============ 初期設定・ロック画面 ============ */
+.lock-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.lock-card{width:100%;max-width:380px;padding:32px 24px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-l);text-align:center}
+.lock-card .big-btn{width:100%}
+.login-logo{display:flex;justify-content:center;margin-bottom:10px;color:var(--primary)}
+.lock-title{margin-bottom:6px;font-size:calc(20px + var(--fs-add));font-weight:700}
+.lock-sub{margin-bottom:18px;font-size:calc(14px + var(--fs-add));line-height:1.8;color:var(--sub)}
+.lock-input{
+  width:100%;min-height:50px;margin-bottom:12px;padding:12px 14px;background:var(--card);border:1px solid var(--line-strong);border-radius:var(--radius-m);
+  font-size:18px;text-align:center;letter-spacing:.3em;
+}
+.lock-input:focus{border-color:var(--primary)}
+.lock-input::placeholder{letter-spacing:normal}   /* 字間を広げるのは、入力した伏せ字だけ */
+.lock-error{min-height:20px;margin-bottom:10px;font-size:calc(14px + var(--fs-add));font-weight:700;color:var(--red)}
+.lock-wait{min-height:20px;margin:0 0 8px;font-size:calc(13px + var(--fs-add));font-weight:700;color:var(--red)}
+.login-note{margin-top:18px;padding:10px 12px;background:var(--pink-wash);border-left:3px solid var(--accent-pink);border-radius:0 var(--radius-s) var(--radius-s) 0;font-size:calc(13px + var(--fs-add));line-height:1.8;color:var(--ink);text-align:left}
+.loading{font-size:calc(15px + var(--fs-add));font-weight:500;color:var(--sub)}
+
+/* ---- 保存したときの表示 ---- */
+.toast{
+  position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:100;
+  padding:12px 22px;background:var(--ink);border-radius:var(--radius-m);color:#FFFFFF;font-size:14px;font-weight:700;
+  opacity:0;pointer-events:none;
+}
+.toast.show{opacity:1}
+
+/* ============ 狭い画面 ============ */
+@media(min-width:560px){
+  .grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:520px){
+  .list-head,.p-head{padding-left:18px;padding-right:18px}
+  .list-body,.grid,.d-body,.em-list,.sp,.d-head{padding-left:18px;padding-right:18px}
+  .private-note-editor,.home-section-head,.home-utility{margin-left:18px;margin-right:18px}
+  .home-actions{grid-template-columns:1fr;gap:8px;padding-left:18px;padding-right:18px}
+  .home-utility{gap:2px 16px}
+  .list-title{font-size:calc(24px + var(--fs-add))}
+  .person-card,.team-card{min-height:72px}
+  .sp-hero{gap:12px}
+  .toolbar{gap:7px}
+  .tool-btn{padding-left:11px;padding-right:11px}
+  .btn-row .big-btn{padding-left:10px;padding-right:10px}
+}
+@media(max-width:350px){
+  .toolbar{display:grid;grid-template-columns:1fr 1fr}
+  .toolbar .tool-btn{width:100%;padding:8px 7px;font-size:calc(12px + var(--fs-add))}
+  .seg-btn{flex:1 1 30%}
+  .sp-hero{flex-direction:column;align-items:flex-start}
+  .home-emergency{grid-column:auto}
+}
+
+/* ---- 動きを減らす設定の端末では、色や枠の変化もすぐに切り替える ---- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important}
+}
+
+/* ============ 印刷(印刷・PDFボタン用)。画面の色に関係なく、白地に黒字 ============ */
+.print-area{display:none}
+@media print{
+  body{background:#fff!important;color:#000!important;font-family:"Hiragino Sans","Yu Gothic Medium","Yu Gothic",Meiryo,sans-serif}
+  #app,.toast{display:none!important}
+  .print-area{display:block!important;padding:10mm;font-size:12pt;color:#000;background:#fff}
+  .print-area h1{font-size:20pt;margin:0 0 4mm;color:#000}
+  .print-area .pr-note{font-size:10.5pt;color:#333;margin-bottom:6mm}
+  .pr-topic{margin:0 0 7mm;break-inside:avoid}
+  .pr-topic h2{font-size:13pt;padding:2mm 3mm;border:0;border-left:2px solid #000;border-radius:0;color:#000;background:#fff;margin:0 0 2mm}
+  .pr-entry{margin:0 0 2.5mm 3mm;padding:0 0 2mm;border-bottom:1px solid #bbb;break-inside:avoid}
+  .pr-entry b{font-size:10.5pt;color:#333}
+  .pr-entry div{font-size:11.5pt;line-height:1.6;white-space:pre-wrap;color:#000}
+  .pr-care{margin-top:6mm;padding:3mm 0 3mm 4mm;border:0;border-left:3px solid #000;border-radius:0;background:#fff;color:#000;font-size:12pt;font-weight:700;line-height:1.6;break-inside:avoid}
+  .pr-empty{margin:4mm 0;font-size:11.5pt;color:#333}
+}
